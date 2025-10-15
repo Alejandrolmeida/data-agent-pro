@@ -59,21 +59,51 @@
 
 ## 🚀 Quick Start
 
-### Prerequisitos
+### ⚡ Setup Automatizado (Recomendado)
 
-- **Python 3.11+**
-- **Azure CLI** instalado y configurado
-- **Cuenta de Azure** con suscripción activa
-- **VS Code** con extensión de GitHub Copilot
+**Tiempo:** 15-20 minutos | **Nivel:** Principiante
 
-### 1. Clonar Repositorio
+El script de setup inicial configura automáticamente todo lo necesario:
+
+```bash
+# 1. Clonar repositorio
+git clone https://github.com/alejandrolmeida/data-agent-pro.git
+cd data-agent-pro
+
+# 2. Ejecutar setup interactivo (configura Azure, GitHub, MCP servers, etc.)
+./scripts/setup/initial-setup.sh
+
+# 3. Configurar MCP Servers para GitHub Copilot
+./scripts/setup/mcp-setup.sh
+
+# 4. Abrir en VS Code
+code .
+```
+
+El script creará:
+
+- ✅ Azure Service Principal
+- ✅ Azure ML Workspace
+- ✅ Application Insights
+- ✅ GitHub Token (para MCP servers)
+- ✅ Archivo .env configurado
+
+📖 **Documentación detallada:** [docs/INITIAL_SETUP_README.md](docs/INITIAL_SETUP_README.md)
+
+---
+
+### 🛠️ Setup Manual (Avanzado)
+
+Si prefieres configurar manualmente o ya tienes recursos creados:
+
+#### 1. Clonar Repositorio
 
 ```bash
 git clone https://github.com/alejandrolmeida/data-agent-pro.git
 cd data-agent-pro
 ```
 
-### 2. Configurar Entorno Python
+#### 2. Configurar Entorno Python
 
 ```bash
 # Crear entorno virtual
@@ -89,7 +119,7 @@ source .venv/bin/activate
 pip install -r requirements.txt
 ```
 
-### 3. Configurar Azure
+#### 3. Configurar Azure
 
 ```bash
 # Login en Azure
@@ -321,9 +351,27 @@ report.save_html('drift_report.html')
 
 ## 📚 Documentación Adicional
 
+### 🎓 Workshop de 3.5 Horas
+
+**¡Nuevo!** Aprende MLOps en Azure con GitHub Copilot en un workshop hands-on completo:
+
+- **[Workshop: MLOps en Azure con GitHub Copilot](docs/WORKSHOP_3H.md)** - 5 módulos prácticos (3.5 horas)
+- **[Materiales del Workshop](docs/workshop/)** - Scripts, datasets y soluciones
+- **[Soluciones de Ejercicios](docs/workshop/solutions/SOLUTIONS.md)** - Referencias completas
+
+**Temas cubiertos:**
+
+1. 🔧 Setup y verificación de 8 servidores MCP
+2. 📊 Exploración y análisis de datos con IA
+3. 🛠️ Feature engineering asistido por Copilot
+4. 🚀 Entrenamiento y deployment en Azure ML
+5. ⚙️ CI/CD y automatización de workflows
+
+### 📖 Más Recursos
+
 - **[Learning Paths](docs/learning-paths/)** - Guías completas de aprendizaje
-- **[Tutorials](docs/tutorials/)** - Tutoriales paso a paso
-- **[Cheatsheets](docs/cheatsheets/)** - Referencias rápidas
+- **[Setup Inicial](docs/INITIAL_SETUP_README.md)** - Configuración automatizada del proyecto
+- **[Configuración MCP](docs/MCP_SETUP_GUIDE.md)** - Guía detallada de servidores MCP
 - **[LEARNING_OBJECTIVES.md](LEARNING_OBJECTIVES.md)** - Objetivos pedagógicos
 - **[PROJECT_CONTEXT.md](PROJECT_CONTEXT.md)** - Contexto del proyecto
 

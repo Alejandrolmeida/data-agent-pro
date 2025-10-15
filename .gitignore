@@ -47,6 +47,9 @@ data/external/
 *.db
 *.sqlite
 
+# Exception: Workshop dataset (small, for educational purposes)
+!data/raw/customer_churn.csv
+
 # Models
 models/*.joblib
 models/*.pkl
@@ -61,6 +64,7 @@ mlruns/
 # Secrets
 .env
 .env.local
+.azure-credentials.json
 secrets.yaml
 *.key
 *.pem

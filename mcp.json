@@ -1,0 +1,149 @@
+{
+  "mcpServers": {
+    "azure-mcp": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "@azure/mcp-server-azure"
+      ],
+      "env": {
+        "AZURE_SUBSCRIPTION_ID": "${env:AZURE_SUBSCRIPTION_ID}",
+        "AZURE_TENANT_ID": "${env:AZURE_TENANT_ID}"
+      },
+      "metadata": {
+        "description": "Azure MCP Server - Acceso a recursos de Azure ML, Storage, Key Vault",
+        "capabilities": [
+          "azure-ml-workspace",
+          "azure-ml-compute",
+          "azure-ml-datasets",
+          "azure-storage",
+          "azure-keyvault"
+        ]
+      }
+    },
+    "python-data-mcp": {
+      "command": "python",
+      "args": [
+        "-m",
+        "mcp_server_pandas"
+      ],
+      "metadata": {
+        "description": "Python Data MCP Server - Análisis de datos con pandas, numpy, scipy",
+        "capabilities": [
+          "dataframe-analysis",
+          "statistical-operations",
+          "data-visualization-code",
+          "data-cleaning"
+        ]
+      }
+    },
+    "jupyter-mcp": {
+      "command": "python",
+      "args": [
+        "-m",
+        "mcp_server_jupyter"
+      ],
+      "metadata": {
+        "description": "Jupyter MCP Server - Integración con notebooks y kernels",
+        "capabilities": [
+          "notebook-execution",
+          "kernel-management",
+          "cell-output-analysis"
+        ]
+      }
+    },
+    "mlflow-mcp": {
+      "command": "python",
+      "args": [
+        "-m",
+        "mcp_server_mlflow"
+      ],
+      "env": {
+        "MLFLOW_TRACKING_URI": "${env:MLFLOW_TRACKING_URI}"
+      },
+      "metadata": {
+        "description": "MLflow MCP Server - Tracking de experimentos y gestión de modelos",
+        "capabilities": [
+          "experiment-tracking",
+          "model-registry",
+          "run-comparison",
+          "artifact-management"
+        ]
+      }
+    },
+    "github-mcp": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "@modelcontextprotocol/server-github"
+      ],
+      "env": {
+        "GITHUB_TOKEN": "${env:GITHUB_TOKEN}"
+      },
+      "metadata": {
+        "description": "GitHub MCP Server - Acceso a repos, issues, PRs",
+        "capabilities": [
+          "repository-search",
+          "issue-management",
+          "pr-operations",
+          "code-search"
+        ]
+      }
+    },
+    "filesystem-mcp": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "@modelcontextprotocol/server-filesystem",
+        "${workspaceFolder}"
+      ],
+      "metadata": {
+        "description": "Filesystem MCP Server - Acceso optimizado a archivos del proyecto",
+        "capabilities": [
+          "file-search",
+          "file-read",
+          "directory-listing",
+          "pattern-matching"
+        ]
+      }
+    },
+    "brave-search-mcp": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "@modelcontextprotocol/server-brave-search"
+      ],
+      "env": {
+        "BRAVE_API_KEY": "${env:BRAVE_API_KEY}"
+      },
+      "metadata": {
+        "description": "Brave Search MCP Server - Búsqueda web para documentación y soluciones",
+        "capabilities": [
+          "web-search",
+          "documentation-lookup",
+          "stackoverflow-search"
+        ]
+      }
+    },
+    "memory-mcp": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "@modelcontextprotocol/server-memory"
+      ],
+      "metadata": {
+        "description": "Memory MCP Server - Contexto persistente entre sesiones",
+        "capabilities": [
+          "session-memory",
+          "context-persistence",
+          "learning-from-corrections"
+        ]
+      }
+    }
+  },
+  "globalSettings": {
+    "timeout": 30000,
+    "retryAttempts": 3,
+    "logLevel": "info"
+  }
+}

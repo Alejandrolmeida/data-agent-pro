@@ -97,6 +97,40 @@ else
     echo "✅ Todas las variables de entorno requeridas están configuradas"
 fi
 
+# Instalar MCP servers Python
+echo ""
+echo "📦 Instalando MCP servers de Python..."
+pip install --quiet mcp-server-pandas mcp-server-jupyter mcp-server-mlflow 2>/dev/null || echo "⚠️  Algunos MCP servers de Python requieren instalación manual"
+
+# Verificar instalación de MCP servers Node.js
+echo ""
+echo "📦 Verificando MCP servers de Node.js..."
+if command -v npx &> /dev/null; then
+    echo "  ℹ️  Los MCP servers de Node.js se instalarán automáticamente cuando uses GitHub Copilot"
+    echo "  ✅ npx disponible - Los servidores se descargarán al primer uso"
+    echo ""
+    echo "  Servidores configurados:"
+    echo "    • @modelcontextprotocol/server-github (GitHub MCP Server)"
+    echo "    • @modelcontextprotocol/server-filesystem (Filesystem MCP Server)"
+    echo "    • @modelcontextprotocol/server-brave-search (Brave Search MCP Server)"
+    echo "    • @modelcontextprotocol/server-memory (Memory MCP Server)"
+    echo "    • @azure/mcp-server-azure (Azure MCP Server)"
+else
+    echo "  ⚠️  Node.js no disponible - MCP servers de Node.js no se pueden instalar"
+fi
+
+echo ""
+echo "✅ Setup de MCP completado"
+echo ""
+echo "📖 Siguiente paso:"
+echo "   1. Copia .env.example a .env y configura tus credenciales"
+echo "   2. Abre VS Code en este directorio"
+echo "   3. Lee docs/MCP_SETUP_GUIDE.md para más información"
+echo ""
+echo "🚀 Para verificar que funciona:"
+echo "   - Abre GitHub Copilot Chat (Ctrl+Shift+I)"
+echo "   - Escribe: @workspace ¿Qué MCP servers están conectados?"
+
 # Test de conectividad con Azure (si está configurado)
 if [ -n "$AZURE_SUBSCRIPTION_ID" ]; then
     echo ""
