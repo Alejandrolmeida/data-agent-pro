@@ -1,0 +1,63 @@
+{
+  "recommendations": [
+    // Python essentials
+    "ms-python.python",
+    "ms-python.vscode-pylance",
+    "charliermarsh.ruff",
+    
+    // Jupyter
+    "ms-toolsai.jupyter",
+    "ms-toolsai.jupyter-keymap",
+    "ms-toolsai.jupyter-renderers",
+    
+    // Azure
+    "ms-azuretools.vscode-azureresourcegroups",
+    "ms-azuretools.vscode-azurefunctions",
+    "ms-azuretools.vscode-azurestorage",
+    "ms-vscode.azurecli",
+    "ms-azure-devops.azure-pipelines",
+    
+    // Bicep & Infrastructure
+    "ms-azuretools.vscode-bicep",
+    "hashicorp.terraform",
+    
+    // Data & ML
+    "randomfractalsInc.vscode-data-preview",
+    "mechatroner.rainbow-csv",
+    
+    // Git & GitHub
+    "github.copilot",
+    "github.copilot-chat",
+    "github.vscode-pull-request-github",
+    "eamodio.gitlens",
+    
+    // YAML & JSON
+    "redhat.vscode-yaml",
+    "tamasfe.even-better-toml",
+    
+    // Markdown
+    "davidanson.vscode-markdownlint",
+    "yzhang.markdown-all-in-one",
+    
+    // Testing & Coverage
+    "ryanluker.vscode-coverage-gutters",
+    "littlefoxteam.vscode-python-test-adapter",
+    
+    // Linting & Formatting
+    "editorconfig.editorconfig",
+    "streetsidesoftware.code-spell-checker",
+    
+    // Docker
+    "ms-azuretools.vscode-docker",
+    
+    // Shell scripts
+    "timonwong.shellcheck",
+    "foxundermoon.shell-format",
+    
+    // Productivity
+    "usernamehw.errorlens",
+    "gruntfuggly.todo-tree",
+    "wayou.vscode-todo-highlight",
+    "alefragnani.bookmarks"
+  ]
+}

@@ -1,0 +1,97 @@
+$schema: https://azuremlschemas.azureedge.net/latest/pipelineJob.schema.json
+type: pipeline
+
+# Pipeline de entrenamiento de modelos
+display_name: Training Pipeline
+description: Pipeline completo de entrenamiento incluyendo data prep y training
+
+settings:
+  default_compute: azureml:cpu-cluster
+  default_datastore: azureml:workspaceblobstore
+  continue_on_step_failure: false
+
+inputs:
+  training_data:
+    type: uri_folder
+    path: azureml://datastores/workspaceblobstore/paths/data/training
+  test_size:
+    type: number
+    default: 0.2
+
+outputs:
+  model_output:
+    type: uri_folder
+    mode: rw_mount
+  metrics_output:
+    type: uri_folder
+    mode: rw_mount
+
+jobs:
+  # Paso 1: Preparación de datos
+  prep_data:
+    type: command
+    component: azureml:data_prep:1
+    inputs:
+      raw_data: ${{parent.inputs.training_data}}
+    outputs:
+      prepared_data:
+        type: uri_folder
+    environment: azureml:training-env@latest
+    code: ../../scripts/data
+    command: >-
+      python ingest.py
+      --source ${{inputs.raw_data}}
+      --destination ${{outputs.prepared_data}}
+
+  # Paso 2: Validación de datos
+  validate_data:
+    type: command
+    inputs:
+      data: ${{parent.jobs.prep_data.outputs.prepared_data}}
+    outputs:
+      validation_results:
+        type: uri_file
+    environment: azureml:training-env@latest
+    code: ../../scripts/data
+    command: >-
+      python validate.py
+      --data-dir ${{inputs.data}}
+      --output ${{outputs.validation_results}}
+
+  # Paso 3: Entrenamiento
+  train_model:
+    type: command
+    inputs:
+      training_data: ${{parent.jobs.prep_data.outputs.prepared_data}}
+      test_size: ${{parent.inputs.test_size}}
+    outputs:
+      model: ${{parent.outputs.model_output}}
+      metrics: ${{parent.outputs.metrics_output}}
+    environment: azureml:training-env@latest
+    code: ../../scripts/train
+    compute: azureml:cpu-cluster
+    command: >-
+      python train.py
+      --data ${{inputs.training_data}}/data.csv
+      --test-size ${{inputs.test_size}}
+      --output-dir ${{outputs.model}}
+      --n-estimators 100
+      --max-depth 10
+      --random-state 42
+
+  # Paso 4: Evaluación
+  evaluate_model:
+    type: command
+    inputs:
+      model: ${{parent.jobs.train_model.outputs.model}}
+      test_data: ${{parent.jobs.prep_data.outputs.prepared_data}}
+    outputs:
+      evaluation_results:
+        type: uri_folder
+    environment: azureml:training-env@latest
+    code: ../../scripts/train
+    command: >-
+      python evaluate.py
+      --model ${{inputs.model}}/model.joblib
+      --data ${{inputs.test_data}}/test.csv
+      --target-column target

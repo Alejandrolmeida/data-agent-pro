@@ -1,0 +1,149 @@
+name: Feature Request
+description: Sugerir una nueva idea o mejora para el proyecto
+title: "[FEATURE] "
+labels: ["enhancement", "feature-request"]
+assignees:
+  - alejandrolmeida
+
+body:
+  - type: markdown
+    attributes:
+      value: |
+        ¡Gracias por sugerir una nueva característica! Tu feedback es invaluable para mejorar el proyecto.
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: ¿Qué problema resuelve esta feature?
+      description: Una descripción clara del problema o necesidad que motiva esta sugerencia.
+      placeholder: |
+        Como [rol], necesito [funcionalidad] para [objetivo/beneficio].
+
+        Actualmente, [descripción del problema o limitación].
+    validations:
+      required: true
+
+  - type: textarea
+    id: solution
+    attributes:
+      label: Solución Propuesta
+      description: Una descripción clara de lo que quieres que ocurra.
+      placeholder: |
+        Me gustaría que el proyecto incluyera...
+
+        Esto funcionaría de la siguiente manera...
+    validations:
+      required: true
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternativas Consideradas
+      description: Describe cualquier solución o característica alternativa que hayas considerado.
+      placeholder: |
+        He considerado usar [alternativa], pero...
+
+        Otra opción sería...
+
+  - type: dropdown
+    id: category
+    attributes:
+      label: Categoría de la Feature
+      description: ¿Qué tipo de mejora estás sugiriendo?
+      options:
+        - Nuevo Modelo o Algoritmo
+        - Mejora en Notebooks
+        - Nueva Funcionalidad en Scripts
+        - Mejora en CI/CD
+        - Nueva Infraestructura (IaC)
+        - Mejora en Documentación
+        - Nuevo Copilot Chat Mode
+        - Integración con Servicio Externo
+        - Optimización de Performance
+        - Mejora de UX/DX
+        - Otro
+    validations:
+      required: true
+
+  - type: dropdown
+    id: priority
+    attributes:
+      label: Prioridad Sugerida
+      description: ¿Qué tan importante crees que es esta feature?
+      options:
+        - Nice to have
+        - Importante
+        - Crítica
+    validations:
+      required: true
+
+  - type: textarea
+    id: use-cases
+    attributes:
+      label: Casos de Uso
+      description: Describe escenarios específicos donde esta feature sería útil.
+      placeholder: |
+        1. Cuando trabajo con [escenario], necesito...
+        2. En proyectos de [tipo], sería útil poder...
+        3. Para [objetivo], esta feature permitiría...
+    validations:
+      required: true
+
+  - type: textarea
+    id: examples
+    attributes:
+      label: Ejemplos de Código (Opcional)
+      description: Si tienes ideas de cómo se usaría esta feature, comparte ejemplos de código.
+      render: python
+      placeholder: |
+        # Ejemplo de cómo se usaría
+        from src.nueva_feature import NuevaClase
+
+        resultado = NuevaClase().hacer_algo()
+
+  - type: textarea
+    id: references
+    attributes:
+      label: Referencias
+      description: Enlaza a proyectos similares, papers, documentación, etc.
+      placeholder: |
+        - https://ejemplo.com/similar-implementation
+        - Paper: "Title" by Author (link)
+        - Proyecto relacionado: username/repo
+
+  - type: checkboxes
+    id: implementation
+    attributes:
+      label: Disponibilidad para Implementar
+      description: ¿Estarías dispuesto a contribuir con esta feature?
+      options:
+        - label: Estoy dispuesto a implementar esta feature (con guía)
+          required: false
+        - label: Puedo ayudar con testing/review
+          required: false
+        - label: Solo estoy sugiriendo la idea
+          required: false
+
+  - type: textarea
+    id: additional
+    attributes:
+      label: Información Adicional
+      description: Añade cualquier otro contexto o screenshots sobre la feature.
+      placeholder: |
+        - Beneficios esperados
+        - Posibles desafíos
+        - Impacto en el proyecto
+        - Screenshots de mockups
+
+  - type: checkboxes
+    id: checklist
+    attributes:
+      label: Checklist
+      description: Por favor confirma lo siguiente
+      options:
+        - label: He buscado en issues existentes y no encontré una solicitud similar
+          required: true
+        - label: Esta feature es relevante para el scope del proyecto (Data Science & MLOps en Azure)
+          required: true
+        - label: He proporcionado suficiente contexto y casos de uso
+          required: true

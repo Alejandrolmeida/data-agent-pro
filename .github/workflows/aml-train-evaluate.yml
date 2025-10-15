@@ -1,0 +1,398 @@
+name: Azure ML - Train & Evaluate
+
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Target environment'
+        required: true
+        type: choice
+        options:
+          - dev
+          - test
+          - prod
+        default: 'dev'
+      compute_target:
+        description: 'Compute cluster name'
+        required: false
+        type: string
+        default: 'cpu-cluster'
+      experiment_name:
+        description: 'Experiment name'
+        required: false
+        type: string
+        default: 'default-experiment'
+  push:
+    branches: [main]
+    paths:
+      - 'src/**'
+      - 'scripts/train/**'
+      - 'aml/pipelines/**'
+
+permissions:
+  id-token: write
+  contents: read
+
+env:
+  PYTHON_VERSION: '3.11'
+
+jobs:
+  validate-code:
+    name: Pre-training Validation
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Install dependencies
+        run: |
+          pip install ruff pytest
+          if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
+
+      - name: Quick lint check
+        run: ruff check src/ scripts/
+
+      - name: Quick test check
+        run: pytest tests/ -v --tb=short -x
+
+  train-dev:
+    name: Train on Dev Environment
+    runs-on: ubuntu-latest
+    needs: validate-code
+    if: github.event.inputs.environment == 'dev' || (github.event_name == 'push' && github.ref == 'refs/heads/main')
+    environment: dev
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Install Azure ML CLI
+        run: |
+          pip install azure-cli azure-ai-ml mlflow
+
+      - name: Azure Login (OIDC)
+        uses: azure/login@v1
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Set Azure ML defaults
+        run: |
+          az configure --defaults \
+            group=${{ vars.AZURE_RESOURCE_GROUP_DEV }} \
+            workspace=${{ vars.AZURE_ML_WORKSPACE_DEV }}
+
+      - name: Submit training job
+        id: train_job
+        run: |
+          echo "Submitting training pipeline to Azure ML..."
+          
+          JOB_NAME=$(az ml job create \
+            --file aml/pipelines/pipeline-train.yml \
+            --set experiment_name=${{ github.event.inputs.experiment_name || 'default-experiment' }} \
+            --set compute=${{ github.event.inputs.compute_target || 'cpu-cluster' }} \
+            --query name -o tsv)
+          
+          echo "job_name=$JOB_NAME" >> $GITHUB_OUTPUT
+          echo "✅ Training job submitted: $JOB_NAME"
+
+      - name: Wait for job completion
+        run: |
+          echo "Waiting for job ${{ steps.train_job.outputs.job_name }} to complete..."
+          
+          az ml job stream \
+            --name ${{ steps.train_job.outputs.job_name }}
+
+      - name: Check job status
+        id: job_status
+        run: |
+          STATUS=$(az ml job show \
+            --name ${{ steps.train_job.outputs.job_name }} \
+            --query status -o tsv)
+          
+          echo "status=$STATUS" >> $GITHUB_OUTPUT
+          
+          if [ "$STATUS" != "Completed" ]; then
+            echo "❌ Job failed with status: $STATUS"
+            exit 1
+          fi
+          
+          echo "✅ Job completed successfully"
+
+      - name: Download metrics
+        if: always()
+        run: |
+          az ml job download \
+            --name ${{ steps.train_job.outputs.job_name }} \
+            --output-name metrics \
+            --download-path ./outputs || true
+
+      - name: Upload metrics as artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: training-metrics-dev-${{ github.run_number }}
+          path: outputs/
+          retention-days: 30
+
+      - name: Extract and display metrics
+        if: success()
+        run: |
+          python - <<'EOF'
+          import json
+          from pathlib import Path
+          
+          metrics_file = Path("outputs/metrics.json")
+          if metrics_file.exists():
+              with open(metrics_file) as f:
+                  metrics = json.load(f)
+              
+              print("\n📊 Training Metrics:")
+              for key, value in metrics.items():
+                  print(f"  {key}: {value}")
+          EOF
+
+  train-test:
+    name: Train on Test Environment
+    runs-on: ubuntu-latest
+    needs: train-dev
+    if: github.event.inputs.environment == 'test'
+    environment: test
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Install Azure ML CLI
+        run: pip install azure-cli azure-ai-ml mlflow
+
+      - name: Azure Login (OIDC)
+        uses: azure/login@v1
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Set Azure ML defaults
+        run: |
+          az configure --defaults \
+            group=${{ vars.AZURE_RESOURCE_GROUP_TEST }} \
+            workspace=${{ vars.AZURE_ML_WORKSPACE_TEST }}
+
+      - name: Submit training job
+        id: train_job
+        run: |
+          JOB_NAME=$(az ml job create \
+            --file aml/pipelines/pipeline-train.yml \
+            --set experiment_name=${{ github.event.inputs.experiment_name }} \
+            --query name -o tsv)
+          
+          echo "job_name=$JOB_NAME" >> $GITHUB_OUTPUT
+
+      - name: Wait and check job
+        run: |
+          az ml job stream --name ${{ steps.train_job.outputs.job_name }}
+          
+          STATUS=$(az ml job show --name ${{ steps.train_job.outputs.job_name }} --query status -o tsv)
+          
+          if [ "$STATUS" != "Completed" ]; then
+            exit 1
+          fi
+
+      - name: Upload metrics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: training-metrics-test-${{ github.run_number }}
+          path: outputs/
+
+  train-prod:
+    name: Train on Production Environment
+    runs-on: ubuntu-latest
+    needs: train-test
+    if: github.event.inputs.environment == 'prod'
+    environment:
+      name: production
+      url: https://ml.azure.com
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Install Azure ML CLI
+        run: pip install azure-cli azure-ai-ml mlflow
+
+      - name: Azure Login (OIDC)
+        uses: azure/login@v1
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Set Azure ML defaults
+        run: |
+          az configure --defaults \
+            group=${{ vars.AZURE_RESOURCE_GROUP_PROD }} \
+            workspace=${{ vars.AZURE_ML_WORKSPACE_PROD }}
+
+      - name: Submit production training job
+        id: train_job
+        run: |
+          JOB_NAME=$(az ml job create \
+            --file aml/pipelines/pipeline-train.yml \
+            --set experiment_name=${{ github.event.inputs.experiment_name }} \
+            --set compute=prod-cpu-cluster \
+            --query name -o tsv)
+          
+          echo "job_name=$JOB_NAME" >> $GITHUB_OUTPUT
+          echo "🚀 Production training job: $JOB_NAME"
+
+      - name: Monitor job
+        run: |
+          az ml job stream --name ${{ steps.train_job.outputs.job_name }}
+
+      - name: Validate job completion
+        run: |
+          STATUS=$(az ml job show --name ${{ steps.train_job.outputs.job_name }} --query status -o tsv)
+          
+          if [ "$STATUS" != "Completed" ]; then
+            echo "❌ Production training failed!"
+            exit 1
+          fi
+          
+          echo "✅ Production training completed successfully"
+
+      - name: Register model
+        id: register
+        run: |
+          python scripts/deploy/register_model.py \
+            --job-name ${{ steps.train_job.outputs.job_name }} \
+            --model-name production-model \
+            --description "Trained on $(date)"
+
+      - name: Create release tag
+        if: success()
+        run: |
+          MODEL_VERSION=$(cat model_version.txt)
+          git tag -a "v${MODEL_VERSION}" -m "Model version ${MODEL_VERSION}"
+          git push origin "v${MODEL_VERSION}"
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Upload production artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: production-artifacts-${{ github.run_number }}
+          path: |
+            outputs/
+            model_version.txt
+          retention-days: 90
+
+  evaluate-model:
+    name: Model Evaluation
+    runs-on: ubuntu-latest
+    needs: [train-dev]
+    if: always()
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Download training metrics
+        uses: actions/download-artifact@v4
+        with:
+          pattern: training-metrics-*
+          merge-multiple: true
+          path: ./metrics
+
+      - name: Evaluate performance
+        run: |
+          python - <<'EOF'
+          import json
+          from pathlib import Path
+          
+          # Thresholds de calidad
+          THRESHOLDS = {
+              "accuracy": 0.80,
+              "f1_score": 0.75,
+              "auc": 0.85
+          }
+          
+          metrics_file = Path("metrics/metrics.json")
+          if metrics_file.exists():
+              with open(metrics_file) as f:
+                  metrics = json.load(f)
+              
+              print("\n📊 Model Performance Evaluation:")
+              passed = True
+              
+              for metric, threshold in THRESHOLDS.items():
+                  value = metrics.get(metric, 0)
+                  status = "✅" if value >= threshold else "❌"
+                  print(f"{status} {metric}: {value:.3f} (threshold: {threshold})")
+                  
+                  if value < threshold:
+                      passed = False
+              
+              if not passed:
+                  print("\n❌ Model does not meet quality thresholds")
+                  exit(1)
+              else:
+                  print("\n✅ Model meets all quality thresholds")
+          else:
+              print("⚠️ No metrics file found")
+          EOF
+
+      - name: Comment results on PR
+        if: github.event_name == 'pull_request'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            
+            let comment = '## 🤖 Model Training Results\n\n';
+            comment += '| Metric | Value | Threshold | Status |\n';
+            comment += '|--------|-------|-----------|--------|\n';
+            
+            try {
+              const metrics = JSON.parse(fs.readFileSync('metrics/metrics.json', 'utf8'));
+              const thresholds = { accuracy: 0.80, f1_score: 0.75, auc: 0.85 };
+              
+              for (const [metric, threshold] of Object.entries(thresholds)) {
+                const value = metrics[metric] || 0;
+                const status = value >= threshold ? '✅' : '❌';
+                comment += `| ${metric} | ${value.toFixed(3)} | ${threshold} | ${status} |\n`;
+              }
+            } catch (e) {
+              comment += '⚠️ Could not load metrics\n';
+            }
+            
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: comment
+            });

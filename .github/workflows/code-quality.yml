@@ -1,0 +1,325 @@
+name: Code Quality & Security
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main, develop]
+  schedule:
+    # Weekly security scan
+    - cron: '0 0 * * 0'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  security-events: write
+  pull-requests: write
+
+jobs:
+  codeql-analysis:
+    name: CodeQL Analysis
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Initialize CodeQL
+        uses: github/codeql-action/init@v3
+        with:
+          languages: python
+          queries: security-and-quality
+
+      - name: Autobuild
+        uses: github/codeql-action/autobuild@v3
+
+      - name: Perform CodeQL Analysis
+        uses: github/codeql-action/analyze@v3
+        with:
+          category: "/language:python"
+
+  secret-scanning:
+    name: Secret Scanning
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # Full history for better detection
+
+      - name: TruffleHog Secrets Scan
+        uses: trufflesecurity/trufflehog@main
+        with:
+          extra_args: --only-verified
+
+      - name: Gitleaks Scan
+        uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITLEAKS_LICENSE: ${{ secrets.GITLEAKS_LICENSE }}
+
+  markdown-lint:
+    name: Markdown Linting
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Lint Markdown files
+        uses: DavidAnson/markdownlint-cli2-action@v15
+        with:
+          globs: |
+            **/*.md
+            !node_modules/**
+
+  shellcheck:
+    name: Shell Script Linting
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Run ShellCheck
+        uses: ludeeus/action-shellcheck@master
+        with:
+          scandir: './scripts'
+          severity: warning
+
+  yaml-lint:
+    name: YAML Linting
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Lint YAML files
+        uses: ibiqlik/action-yamllint@v3
+        with:
+          file_or_dir: |
+            .github/workflows/
+            aml/
+          config_file: .yamllint.yml
+          strict: true
+
+  dependency-check:
+    name: Dependency Vulnerability Scan
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: |
+          pip install safety pip-audit
+
+      - name: Safety check
+        continue-on-error: true
+        run: |
+          pip install -r requirements.txt
+          safety check --json --output safety-report.json || true
+
+      - name: Pip audit
+        continue-on-error: true
+        run: |
+          pip-audit --format json --output pip-audit-report.json || true
+
+      - name: Upload vulnerability reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: vulnerability-reports
+          path: |
+            safety-report.json
+            pip-audit-report.json
+          retention-days: 30
+
+  license-check:
+    name: License Compliance
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: |
+          pip install pip-licenses
+
+      - name: Check licenses
+        run: |
+          pip install -r requirements.txt
+          pip-licenses \
+            --format=markdown \
+            --output-file=licenses.md \
+            --allow-only="Apache-2.0;BSD;MIT;Python-2.0;ISC"
+
+      - name: Upload license report
+        uses: actions/upload-artifact@v4
+        with:
+          name: license-report
+          path: licenses.md
+          retention-days: 30
+
+  docker-security:
+    name: Docker Security Scan
+    runs-on: ubuntu-latest
+    if: hashFiles('Dockerfile') != ''
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Run Trivy vulnerability scanner
+        uses: aquasecurity/trivy-action@master
+        with:
+          scan-type: 'fs'
+          scan-ref: '.'
+          format: 'sarif'
+          output: 'trivy-results.sarif'
+
+      - name: Upload Trivy results to GitHub Security
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: 'trivy-results.sarif'
+
+  terraform-security:
+    name: IaC Security Scan
+    runs-on: ubuntu-latest
+    if: hashFiles('**/*.bicep') != '' || hashFiles('**/*.tf') != ''
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Run tfsec
+        if: hashFiles('**/*.tf') != ''
+        uses: aquasecurity/tfsec-action@v1.0.3
+        with:
+          soft_fail: true
+
+      - name: Run Checkov for Bicep
+        if: hashFiles('**/*.bicep') != ''
+        uses: bridgecrewio/checkov-action@master
+        with:
+          directory: aml/
+          framework: bicep
+          soft_fail: true
+          output_format: sarif
+          output_file_path: checkov-results.sarif
+
+      - name: Upload Checkov results
+        if: hashFiles('**/*.bicep') != ''
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: checkov-results.sarif
+
+  code-coverage-gate:
+    name: Code Coverage Gate
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request'
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: |
+          pip install pytest pytest-cov
+          if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
+
+      - name: Run tests with coverage
+        run: |
+          pytest tests/ \
+            --cov=src \
+            --cov-report=json \
+            --cov-fail-under=80
+
+      - name: Coverage comment
+        uses: py-cov-action/python-coverage-comment-action@v3
+        with:
+          GITHUB_TOKEN: ${{ github.token }}
+          MINIMUM_GREEN: 90
+          MINIMUM_ORANGE: 70
+
+  quality-gate:
+    name: Quality Gate Summary
+    runs-on: ubuntu-latest
+    needs: 
+      - codeql-analysis
+      - secret-scanning
+      - markdown-lint
+      - shellcheck
+      - yaml-lint
+      - dependency-check
+      - license-check
+    if: always()
+    
+    steps:
+      - name: Check all jobs status
+        run: |
+          echo "CodeQL: ${{ needs.codeql-analysis.result }}"
+          echo "Secret Scanning: ${{ needs.secret-scanning.result }}"
+          echo "Markdown Lint: ${{ needs.markdown-lint.result }}"
+          echo "ShellCheck: ${{ needs.shellcheck.result }}"
+          echo "YAML Lint: ${{ needs.yaml-lint.result }}"
+          echo "Dependency Check: ${{ needs.dependency-check.result }}"
+          echo "License Check: ${{ needs.license-check.result }}"
+          
+          # Fail if any critical check failed
+          if [[ "${{ needs.codeql-analysis.result }}" == "failure" ]] || \
+             [[ "${{ needs.secret-scanning.result }}" == "failure" ]]; then
+            echo "❌ Critical security checks failed!"
+            exit 1
+          fi
+          
+          echo "✅ Quality gate passed!"
+
+      - name: Create quality report
+        if: github.event_name == 'pull_request'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const results = {
+              codeql: '${{ needs.codeql-analysis.result }}',
+              secrets: '${{ needs.secret-scanning.result }}',
+              markdown: '${{ needs.markdown-lint.result }}',
+              shell: '${{ needs.shellcheck.result }}',
+              yaml: '${{ needs.yaml-lint.result }}',
+              dependencies: '${{ needs.dependency-check.result }}',
+              licenses: '${{ needs.license-check.result }}'
+            };
+            
+            let comment = '## 🛡️ Code Quality & Security Report\n\n';
+            comment += '| Check | Status |\n|-------|--------|\n';
+            
+            for (const [check, result] of Object.entries(results)) {
+              const emoji = result === 'success' ? '✅' : result === 'failure' ? '❌' : '⚠️';
+              comment += `| ${check} | ${emoji} ${result} |\n`;
+            }
+            
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: comment
+            });

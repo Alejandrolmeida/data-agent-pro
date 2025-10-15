@@ -1,0 +1,49 @@
+$schema: https://azuremlschemas.azureedge.net/latest/pipelineJob.schema.json
+type: pipeline
+
+# Pipeline de batch scoring
+display_name: Batch Scoring Pipeline
+description: Pipeline para predicciones batch a gran escala
+
+settings:
+  default_compute: azureml:cpu-cluster
+  default_datastore: azureml:workspaceblobstore
+
+inputs:
+  input_data:
+    type: uri_folder
+    path: azureml://datastores/workspaceblobstore/paths/data/scoring
+  model_name:
+    type: string
+  model_version:
+    type: string
+
+outputs:
+  predictions:
+    type: uri_folder
+    mode: rw_mount
+
+jobs:
+  batch_score:
+    type: command
+    inputs:
+      data: ${{parent.inputs.input_data}}
+      model_name: ${{parent.inputs.model_name}}
+      model_version: ${{parent.inputs.model_version}}
+    outputs:
+      predictions: ${{parent.outputs.predictions}}
+    environment: azureml:inference-env@latest
+    code: ../../src/models
+    compute: azureml:cpu-cluster
+    resources:
+      instance_count: 4
+    distribution:
+      type: pytorch
+      process_count_per_instance: 2
+    command: >-
+      python inference.py
+      --data-path ${{inputs.data}}
+      --model-name ${{inputs.model_name}}
+      --model-version ${{inputs.model_version}}
+      --output-path ${{outputs.predictions}}
+      --batch-size 1000

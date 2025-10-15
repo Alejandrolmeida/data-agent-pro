@@ -1,0 +1,20 @@
+* @alejandrolmeida
+
+# Data Science Team
+/src/ @alejandrolmeida
+/notebooks/ @alejandrolmeida
+/scripts/data/ @alejandrolmeida
+/scripts/train/ @alejandrolmeida
+
+# MLOps Team
+/aml/ @alejandrolmeida
+/.github/workflows/ @alejandrolmeida
+/scripts/deploy/ @alejandrolmeida
+
+# Documentation
+/docs/ @alejandrolmeida
+README.md @alejandrolmeida
+
+# Security & Compliance
+SECURITY.md @alejandrolmeida
+/.github/workflows/code-quality.yml @alejandrolmeida
