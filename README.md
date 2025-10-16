@@ -2,10 +2,12 @@
 
 > Proyecto profesional de Data Science & MLOps en Azure potenciado por GitHub Copilot
 
-[![CI/CD](https://github.com/alejandrolmeida/data-agent-pro/workflows/CI%2FCD/badge.svg)](https://github.com/alejandrolmeida/data-agent-pro/actions)
+[![GitHub Stars](https://img.shields.io/github/stars/alejandrolmeida/data-agent-pro?style=social)](https://github.com/alejandrolmeida/data-agent-pro/stargazers)
 [![Python 3.11+](https://img.shields.io/badge/python-3.11+-blue.svg)](https://www.python.org/downloads/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
+[![Azure ML](https://img.shields.io/badge/Azure-ML-0078D4?logo=microsoft-azure)](https://azure.microsoft.com/en-us/services/machine-learning/)
+[![GitHub Copilot](https://img.shields.io/badge/GitHub-Copilot-8B5CF6?logo=github)](https://github.com/features/copilot)
 
 ## 📋 Descripción
 
